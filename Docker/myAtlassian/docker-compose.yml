@@ -15,3 +15,5 @@ services:
       - /home/noel/ApplicationData/Postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: mysecretpassword
+    # command: su - postgres -c '/setup_bamboo.sh'
+
