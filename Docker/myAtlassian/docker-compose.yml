@@ -1,0 +1,17 @@
+services:
+  mybamboo:
+    image: mybamboo
+    ports:
+      - 8085:8085
+      - 54663:54663
+    volumes:
+      - /home/noel/ApplicationData/Bamboo:/var/atlassian/application-data/bamboo
+
+  mypostgres:
+    image: mypostgres
+    ports:
+      - 5432:5432
+    volumes:
+      - /home/noel/ApplicationData/Postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
