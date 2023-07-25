@@ -20,6 +20,8 @@ docker compose logs -f
 #          FUTURE: Find a way to run the script after postgres service is initialized
 docker exec -it myatlassian-mypostgres-1 bash
 su - postgres -c '/setup_bamboo.sh'
+## !!!IMPORTANT!!! - restart postgres service
+docker compose restart
 
 # Stop containers
 docker compose down
