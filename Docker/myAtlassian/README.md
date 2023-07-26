@@ -21,9 +21,18 @@ docker compose logs -f
 docker exec -it myatlassian-mypostgres-1 bash
 su - postgres -c '/setup_bamboo.sh'
 ## !!!IMPORTANT!!! - restart postgres service
-docker compose restart
+docker compose restart mypostgres
+
+# WORKAROUND:
+#   Connect to the application using the actual IP for the bamboo container
+#   Connect to the database using the actual IP for the postgres container
+#       Find out by using 'docker network inspect myatlassian_default
+# TO DO:  We will need to find a better way to handle network in docker
+#       NOTE:  if you do 'docker compose down', it will remove the network
+#              which mean on the next 'docker compose up -d' it will have another set of IPs
+#              for each container which is NOT good!!!
 
 # Stop containers
-docker compose down
+docker compose stop
 
 
