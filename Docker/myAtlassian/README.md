@@ -24,13 +24,13 @@ su - postgres -c '/setup_bamboo.sh'
 docker compose restart mypostgres
 
 # WORKAROUND:
-#   Connect to the application using the actual IP for the bamboo container
-#   Connect to the database using the actual IP for the postgres container
-#       Find out by using 'docker network inspect myatlassian_default
-# TO DO:  We will need to find a better way to handle network in docker
-#       NOTE:  if you do 'docker compose down', it will remove the network
-#              which mean on the next 'docker compose up -d' it will have another set of IPs
-#              for each container which is NOT good!!!
+#   During bamboo first startup / initialization, use the following workaround so that there are no issues during 
+#       schema creation of bamboo database.  Otherwise it will hang during schema creation.
+#       NOTE:  Revised docker-compose.yml file so that we have a fix IP for both containers
+#       1.  Connect to the web application using the actual IP for the bamboo container.  IE:  http://172.20.0.2:8085
+#       2.  When specifying the JDBC URI, use the actual hostname of postgres which is 'postgres' (instead of localhost)
+#       3.  Once bamboo has completed setup, you can change to connect using http://bamboo:8085
+#       4.  Make sure to change Base URL to:  http://bamboo:8085 (this is in Bamboo -> General Configuration)
 
 # Stop containers
 docker compose stop

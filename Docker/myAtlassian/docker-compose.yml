@@ -1,19 +1,38 @@
 services:
-  mybamboo:
+  bamboo:
     image: mybamboo
     ports:
       - 8085:8085
       - 54663:54663
     volumes:
       - /home/noel/ApplicationData/Bamboo:/var/atlassian/application-data/bamboo
+    networks:
+      network:
+        ipv4_address: 172.20.0.2
+    extra_hosts:
+      - "bamboo:172.20.0.2"
+      - "postgres:172.20.0.3"
 
-  mypostgres:
+  postgres:
     image: mypostgres
     ports:
       - 5432:5432
     volumes:
       - /home/noel/ApplicationData/Postgres:/var/lib/postgresql/data
+    networks:
+      network:
+        ipv4_address: 172.20.0.3
+    extra_hosts:
+      - "bamboo:172.20.0.2"
+      - "postgres:172.20.0.3"
     environment:
       POSTGRES_PASSWORD: mysecretpassword
     # command: su - postgres -c '/setup_bamboo.sh'
 
+networks:
+  network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
