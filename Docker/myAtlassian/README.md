@@ -50,3 +50,8 @@ NOTE:  Revised docker-compose.yml file so that we have a fix IP for both contain
 ```
 docker compose stop
 ```
+
+## Remove containers / networks
+```
+docker compose down
+```
