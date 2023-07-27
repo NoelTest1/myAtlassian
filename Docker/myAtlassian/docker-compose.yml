@@ -4,6 +4,7 @@ services:
     ports:
       - 8085:8085
       - 54663:54663
+      - 54667:54667
     volumes:
       - /home/noel/ApplicationData/Bamboo:/var/atlassian/application-data/bamboo
     networks:
@@ -28,6 +29,20 @@ services:
     environment:
       POSTGRES_PASSWORD: mysecretpassword
     # command: su - postgres -c '/setup_bamboo.sh'
+
+  bambooAgent1:
+    hostname: bambooAgent1
+    image: atlassian/bamboo-agent-base
+    #volumes:
+    #  - /home/noel/ApplicationData/Postgres:/var/lib/postgresql/data
+    networks:
+      network:
+        ipv4_address: 172.20.0.4
+    extra_hosts:
+      - "bamboo:172.20.0.2"
+      - "postgres:172.20.0.3"
+    environment:
+      BAMBOO_SERVER: http://bamboo:8085/agentServer/
 
 networks:
   network:

@@ -7,6 +7,9 @@ docker build -t mybamboo .
 
 cd ~/Docker/myAtlassian/Postgres
 docker build -t mypostgres .
+
+cd ~/Docker/myAtlassian/BambooAgent
+docker build -t mybagent .
 ```
 
 ## Run containers
@@ -55,3 +58,18 @@ docker compose stop
 ```
 docker compose down
 ```
+
+
+
+
+---
+java -jar /atlassian-bamboo-agent-installer-9.3.1.jar http://bamboo:8085/agentServer/
+
+docker run -e BAMBOO_SERVER=http://bamboo/agentServer/ -v bambooVolume:/var/atlassian/application-data/bamboo --name="bambooAgent" --hostname="bambooAgent" -d atlassian/bamboo-agent-base
+
+
+docker run --rm --add-host=bamboo:172.20.0.2 -e BAMBOO_SERVER=http://bamboo:8085/agentServer/ --name="bambooAgent" --hostname="bambooAgent" -d atlassian/bamboo-agent-base
+
+failover:(tcp://172.20.0.2:54663?socket.verifyHostName=false&wireFormat.maxInactivityDuration=300000)?initialReconnectDelay=15000&maxReconnectAttempts=10
+
+failover:(ssl://172.20.0.2:54663?wireFormat.maxInactivityDuration=300000&amp;socket.verifyHostName=false)?initialReconnectDelay=15000&amp;maxReconnectAttempts=10
