@@ -1,7 +1,7 @@
 services:
   bamboo:
     image: mybamboo
-    restart: unless-stopped
+    restart: always
     ports:
       - 8085:8085
       - 54663:54663
@@ -17,7 +17,7 @@ services:
 
   postgres:
     image: mypostgres
-    restart: unless-stopped
+    restart: always
     ports:
       - 5432:5432
     volumes:
@@ -35,7 +35,7 @@ services:
   bambooAgent1:
     hostname: bambooAgent1
     image: atlassian/bamboo-agent-base
-    restart: unless-stopped
+    restart: always
     #volumes:
     #  - /home/noel/ApplicationData/Postgres:/var/lib/postgresql/data
     networks:
