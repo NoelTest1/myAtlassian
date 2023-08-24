@@ -1,0 +1,11 @@
+# install4j response file for Bitbucket 7.21.0
+app.bitbucketHome=C\:\\Atlassian\\Bitbucket-home
+app.defaultInstallDir=C\:\\Atlassian\\Bitbucket
+app.install.service$Boolean=true
+app.programGroupName=Bitbucket
+executeLauncherAction$Boolean=false
+installation.type=INSTALL
+launch.application$Boolean=true
+portChoice=default
+sys.adminRights$Boolean=true
+sys.languageId=en

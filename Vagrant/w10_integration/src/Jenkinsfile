@@ -1,0 +1,27 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Building..'
+		bat '''
+		dir Vagrantfile
+		'''
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing..'
+		bat '''
+		dir MISSING.txt
+		'''
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'Deploying....'
+            }
+        }
+    }
+}

@@ -1,0 +1,241 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+  # OS check
+  module OS
+    def OS.windows?
+        (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
+    end
+    def OS.mac?
+        (/darwin/ =~ RUBY_PLATFORM) != nil
+    end
+    def OS.unix?
+        !OS.windows?
+    end
+    def OS.linux?
+        OS.unix? and not OS.mac?
+    end
+  end
+
+  # Get network
+  module Network
+    # Detect OS
+    if OS.windows?
+        puts "Host OS is Windows"
+        network = `"C:/Program Files/Oracle/VirtualBox/VBoxManage.exe" list hostonlyifs | grep "VBoxNetworkName" | awk -F:"-" '{st = index($0, "-"); print $2 substr($0,st+1)}' | sort`
+        PORT2 = '\\\.\pipe\ONS_03_01_2018-ttyS1'
+    elsif (OS.mac? || OS.unix?)
+        puts "Host OS is Unix"
+        network = `VBoxManage list hostonlyifs | grep "VBoxNetworkName" | awk -F'[:-]' '{print $3}' | sort`
+        PORT2 = '/tmp/ONS_03_01_2018-ttyS1'
+    else
+        puts "Unknown host OS detected"
+    end
+
+    # Set expected network adapters' names
+    netAdapters = network.split(/\n/).reject(&:empty?)
+    @@elem1 = netAdapters[0]
+    @@elem2 = netAdapters[1]
+    @@elem3 = netAdapters[2]
+    @@elem4 = netAdapters[3]
+
+    def adapter1
+      @@elem1
+    end
+    def adapter2
+      @@elem2
+    end
+    def adapter3
+      @@elem3
+    end
+    def adapter4
+      @@elem4
+    end
+  end
+
+  config.vm.define "jira" do |jira|
+    include Network
+    # jira.vm.box = "mwrock/Windows2016"
+    # jira.vm.box_version = "0.3.0"
+    jira.vm.box = "gusztavvargadr/windows-10-22h2-enterprise"
+    jira.vm.hostname = "w2016jira"
+    jira.vm.box_check_update = false
+
+    jira.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "2048"
+      vb.cpus = 2
+      vb.customize ["modifyvm", :id, "--nic1", "nat"]
+      vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+      vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      vb.customize ["modifyvm", :id, "--cableconnected2", "on"]
+      vb.customize ["modifyvm", :id, "--hostonlyadapter2", adapter1]
+    end
+    jira.vm.network :private_network, ip: "192.168.56.13", virtualbox__intnet: adapter1
+
+    jira.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
+      Write-Output "run: add entries to host file"
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+
+      Write-Output "run: install chrome"
+      Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
+
+      Write-Output "run: install java"
+      Start-Process 'c:\Vagrant\installer\jre-8u261-windows-x64.exe' -ArgumentList 'INSTALLCFG=c:\Vagrant\java.install.cfg' -Wait
+      [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
+
+      Write-Output "run: install jira"
+      Start-Process 'c:\Vagrant\installer\atlassian-jira-software-8.22.1-x64.exe' -ArgumentList '-q -varfile c:\Vagrant\response.varfile.jira' -Wait
+
+      Write-Output "run: disable firewalls"
+      Start-Process 'netsh' -ArgumentList 'advfirewall set allprofiles state off' -Wait
+
+      Write-Output "run: complete"
+    POWERSHELL
+  end
+
+  config.vm.define "bitbucket" do |bitbucket|
+    include Network
+    # bitbucket.vm.box = "mwrock/Windows2016"
+    # bitbucket.vm.box_version = "0.3.0"
+    bitbucket.vm.box = "gusztavvargadr/windows-10-22h2-enterprise"
+    bitbucket.vm.hostname = "w2016bitbucket"
+    bitbucket.vm.box_check_update = false
+
+    bitbucket.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "2048"
+      vb.cpus = 2
+      vb.customize ["modifyvm", :id, "--nic1", "nat"]
+      vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+      vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      vb.customize ["modifyvm", :id, "--cableconnected2", "on"]
+      vb.customize ["modifyvm", :id, "--hostonlyadapter2", adapter1]
+    end
+    bitbucket.vm.network :private_network, ip: "192.168.56.12", virtualbox__intnet: adapter1
+
+    bitbucket.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
+      Write-Output "run: add entries to host file"
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+
+      Write-Output "run: install chrome"
+      Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
+
+      Write-Output "run: install java"
+      Start-Process 'c:\Vagrant\installer\jre-8u261-windows-x64.exe' -ArgumentList 'INSTALLCFG=c:\Vagrant\java.install.cfg' -Wait
+      [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
+
+      Write-Output "run: install git"
+      Start-Process 'c:\Vagrant\installer\Git-2.35.3-64-bit.exe' -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS' -Wait
+
+      Write-Output "run: install bitbucket"
+      Start-Process 'c:\Vagrant\installer\atlassian-bitbucket-7.21.0-x64.exe' -ArgumentList '-q -varfile c:\Vagrant\response.varfile.bitbucket' -Wait
+
+      Write-Output "run: disable firewalls"
+      Start-Process 'netsh' -ArgumentList 'advfirewall set allprofiles state off' -Wait
+
+      Write-Output "run: complete"
+    POWERSHELL
+  end
+
+  config.vm.define "bamboo" do |bamboo|
+    include Network
+    # bamboo.vm.box = "mwrock/Windows2016"
+    # bamboo.vm.box_version = "0.3.0"
+    bamboo.vm.box = "gusztavvargadr/windows-10-22h2-enterprise"
+    bamboo.vm.hostname = "w2016bamboo"
+    bamboo.vm.box_check_update = false
+
+    bamboo.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "2048"
+      vb.cpus = 2
+      vb.customize ["modifyvm", :id, "--nic1", "nat"]
+      vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+      vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      vb.customize ["modifyvm", :id, "--cableconnected2", "on"]
+      vb.customize ["modifyvm", :id, "--hostonlyadapter2", adapter1]
+    end
+    bamboo.vm.network :private_network, ip: "192.168.56.16", virtualbox__intnet: adapter1
+
+    bamboo.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
+      Write-Output "run: add entries to host file"
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+
+      Write-Output "run: install chrome"
+      Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
+
+      Write-Output "run: install java"
+      Start-Process 'c:\Vagrant\installer\jre-8u261-windows-x64.exe' -ArgumentList 'INSTALLCFG=c:\Vagrant\java.install.cfg' -Wait
+      [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
+
+      Write-Output "run: install bamboo"
+      Start-Process 'c:\Vagrant\installer\atlassian-bamboo-8.2.1-windows-x64.exe' -ArgumentList '-q -varfile c:\Vagrant\response.varfile.bamboo' -Wait
+
+      Write-Output "run: install and start bamboo service"
+      Start-Process 'c:\Atlassian\Bamboo\InstallAsService.bat' -Wait
+      Start-Service -Name "Atlassian Bamboo Bamboo"
+
+      Write-Output "run: install postgres"
+      Start-Process 'c:\Vagrant\installer\postgresql-13.6-2-windows-x64.exe' -ArgumentList '--mode unattended --prefix c:\postgres\13 --datadir c:\postgres\data --superpassword postgres --serverport 5432' -Wait
+      Copy-Item 'c:\Vagrant\pg_hba.conf' -Destination 'c:\postgres\data\pg_hba.conf' -Force 
+      Restart-Service -Name "postgresql-x64-13"
+      Start-Process 'c:\postgres\13\bin\psql.exe' -ArgumentList '-U postgres -f c:\Vagrant\create_db_all.sql' -Wait
+      
+      Write-Output "run: disable firewalls"
+      Start-Process 'netsh' -ArgumentList 'advfirewall set allprofiles state off' -Wait
+
+      Write-Output "run: complete"
+    POWERSHELL
+  end
+
+  config.vm.define "jenkins" do |jenkins|
+    include Network
+    # jenkins.vm.box = "mwrock/Windows2016"
+    # jenkins.vm.box_version = "0.3.0"
+    jenkins.vm.box = "gusztavvargadr/windows-10-22h2-enterprise"
+    jenkins.vm.hostname = "w2016jenkins"
+    jenkins.vm.box_check_update = false
+
+    jenkins.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "2048"
+      vb.cpus = 2
+      vb.customize ["modifyvm", :id, "--nic1", "nat"]
+      vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+      vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      vb.customize ["modifyvm", :id, "--cableconnected2", "on"]
+      vb.customize ["modifyvm", :id, "--hostonlyadapter2", adapter1]
+    end
+    jenkins.vm.network :private_network, ip: "192.168.56.11", virtualbox__intnet: adapter1
+
+
+    jenkins.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
+      Write-Output "run: add entries to host file"
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+
+      Write-Output "run: install jenkins"
+      [Environment]::SetEnvironmentVariable("JENKINS_HOME", "c:\jenkins_home", "Machine")
+      New-Item -Path 'c:\jenkins_home' -ItemType Directory
+      Copy-Item 'c:\Vagrant\installer\jenkins.war' -Destination 'c:\jenkins_home'
+      Expand-Archive 'c:\Vagrant\plugins\jenkins_plugins.zip' -DestinationPath 'c:\jenkins_home'
+
+      Write-Output "run: install git"
+      Start-Process 'c:\Vagrant\installer\Git-2.35.3-64-bit.exe' -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS' -Wait
+
+      Write-Output "run: install chrome"
+      Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
+
+      Write-Output "run: disable firewalls"
+      Start-Process 'netsh' -ArgumentList 'advfirewall set allprofiles state off' -Wait
+
+      Write-Output "run: install java"
+      Start-Process 'c:\Vagrant\installer\OpenJDK11U-jdk_x64_windows_hotspot_11.0.14.1_1.msi' -ArgumentList '/quiet /forcerestart'
+      [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
+
+      Write-Output "run: complete"
+    POWERSHELL
+  end
+end

@@ -1,0 +1,169 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+  # OS check
+  module OS
+    def OS.windows?
+        (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
+    end
+    def OS.mac?
+        (/darwin/ =~ RUBY_PLATFORM) != nil
+    end
+    def OS.unix?
+        !OS.windows?
+    end
+    def OS.linux?
+        OS.unix? and not OS.mac?
+    end
+  end
+
+  # Get network
+  module Network
+    # Detect OS
+    if OS.windows?
+        puts "Host OS is Windows"
+        network = `"C:/Program Files/Oracle/VirtualBox/VBoxManage.exe" list hostonlyifs | grep "VBoxNetworkName" | awk -F:"-" '{st = index($0, "-"); print $2 substr($0,st+1)}' | sort`
+        PORT2 = '\\\.\pipe\ONS_03_01_2018-ttyS1'
+    elsif (OS.mac? || OS.unix?)
+        puts "Host OS is Unix"
+        network = `VBoxManage list hostonlyifs | grep "VBoxNetworkName" | awk -F'[:-]' '{print $3}' | sort`
+        PORT2 = '/tmp/ONS_03_01_2018-ttyS1'
+    else
+        puts "Unknown host OS detected"
+    end
+
+    # Set expected network adapters' names
+    netAdapters = network.split(/\n/).reject(&:empty?)
+    @@elem1 = netAdapters[0]
+    @@elem2 = netAdapters[1]
+    @@elem3 = netAdapters[2]
+    @@elem4 = netAdapters[3]
+
+    def adapter1
+      @@elem1
+    end
+    def adapter2
+      @@elem2
+    end
+    def adapter3
+      @@elem3
+    end
+    def adapter4
+      @@elem4
+    end
+  end
+
+  config.vm.define "w7python" do |w7python|
+    include Network
+    w7python.vm.box = "gegmar/win7"
+    w7python.vm.hostname = "win7python"
+    w7python.vm.box_check_update = false
+
+    w7python.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "4096"
+      vb.cpus = 2
+      vb.customize ["modifyvm", :id, "--nic1", "nat"]
+      vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+      vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      vb.customize ["modifyvm", :id, "--cableconnected2", "on"]
+      vb.customize ["modifyvm", :id, "--hostonlyadapter2", adapter1]
+    end
+    w7python.vm.network :private_network, ip: "192.168.56.18", virtualbox__intnet: adapter1
+
+    w7python.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
+
+      # UPDATE HOST FILE
+      Write-Output "run: add entries to host file"
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo`n192.168.56.20`tdocker`n192.168.56.18`tw7python" -Force
+
+      # GIT INSTALL - other commands are dependent on curl in git 
+      #   Need local copy of executable
+      Write-Output "run: install git"
+      Start-Process 'c:\vagrant\installer\Git-2.35.3-64-bit.exe' -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS' -Wait
+
+      # Create directory
+      Write-Output "create dir c:\\installer\\"
+      New-Item -Path 'c:\\installer\\' -ItemType Directory
+
+      # Download files
+      Write-Output "download files from a URL"
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://github.com/git-for-windows/git/releases/download/v2.35.3.windows.1/                                                                              -o /installer/Git-2.35.3-64-bit.exe' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://dl.google.com/tag/s/appguid%253D%257B8A69D345-D564-463C-AFF1-A69D9E530F96%257D%2526iid%253D%257BBEF3DB5A-5C0B-4098-B932-87EC614379B7%257D%2526lang%253Den%2526browser%253D4%2526usagestats%253D1%2526appname%253DGoogle%252520Chrome%2526needsadmin%253Dtrue%2526ap%253Dx64-stable-statsdef_1%2526brand%253DGCEB/dl/chrome/install/GoogleChromeStandaloneEnterprise64.msi -o /installer/GoogleChromeStandaloneEnterprise64.msi' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://www.python.org/ftp/python/3.7.0/python-3.7.0-amd64.exe                                                                                           -o /installer/python-3.7.0-amd64.exe' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/07/51/2c0959c5adf988c44d9e1e0d940f5b074516ecc87e96b1af25f59de9ba38/pip-23.0.1-py3-none-any.whl                   -o /installer/pip-23.0.1-py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/6f/50/3d7729d64bb23393aa4c166af250a6e6f9def40c90bf0e9af3c5ad25b6f7/pyelftools-0.27-py2.py3-none-any.whl          -o /installer/pyelftools-0.27-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/5e/c4/6c4fe722df5343c33226f0b4e0bb042e4dc13483228b4718baf286f86d87/certifi-2020.6.20-py2.py3-none-any.whl        -o /installer/certifi-2020.6.20-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/e1/e5/df302e8017440f111c11cc41a6b432838672f5a70aa29227bf58149dc72f/urllib3-1.25.9-py2.py3-none-any.whl           -o /installer/urllib3-1.25.9-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/a2/38/928ddce2273eaa564f6f50de919327bf3a00f091b5baba8dfa9460f3a8a8/idna-2.10-py2.py3-none-any.whl                -o /installer/idna-2.10-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/05/57/ce2e7a8fa7c0afb54a0581b14a65b56e62b5759dbc98e80627142b8a3704/oauthlib-3.1.0-py2.py3-none-any.whl           -o /installer/oauthlib-3.1.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/8c/27/99f781a11e4daa5acadf97add6e5883ec5f8f9abbf279e790fd0ff371db7/chardet-3.0.3-py2.py3-none-any.whl            -o /installer/chardet-3.0.3-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/45/1e/0c169c6a5381e241ba7404532c16a21d86ab872c9bed8bdcd4c423954103/requests-2.24.0-py2.py3-none-any.whl          -o /installer/requests-2.24.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/a3/12/b92740d845ab62ea4edf04d2f4164d82532b5a0b03836d4d4e71c6f3d379/requests_oauthlib-1.3.0-py2.py3-none-any.whl  -o /installer/requests_oauthlib-1.3.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/ee/ff/48bde5c0f013094d729fe4b0316ba2a24774b3ff1c52d924a8a4cb04078a/six-1.15.0-py2.py3-none-any.whl               -o /installer/six-1.15.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/e0/c2/8510ac0d5991a2dc6db2c0096f74db564250a32e5e3516a07223733de748/atlassian-python-api-1.16.0.tar.gz            -o /installer/atlassian-python-api-1.16.0.tar.gz' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/f0/da/572cbc0bc582390480bbd7c4e93d14dc46079778ed915b505dc494b37c57/jdcal-1.4.1-py2.py3-none-any.whl              -o /installer/jdcal-1.4.1-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/22/28/a99c42aea746e18382ad9fb36f64c1c1f04216f41797f2f0fa567da11388/et_xmlfile-1.0.1.tar.gz                       -o /installer/et_xmlfile-1.0.1.tar.gz' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/06/74/9b387472866358ebc08732de3da6dc48e44b0aacd2ddaa5cb85ab7e986a2/defusedxml-0.6.0-py2.py3-none-any.whl         -o /installer/defusedxml-0.6.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/5c/90/61f83be1c335a9b69fa773784a785d9de95c7561d1661918796fd1cba3d2/openpyxl-3.0.5-py2.py3-none-any.whl           -o /installer/openpyxl-3.0.5-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/b5/26/801bc6d99612977accac84b2d8ad06efa4a7d831c5e2813ca9baf700b646/pywin32-225-cp37-cp37m-win_amd64.whl          -o /installer/pywin32-225-cp37-cp37m-win_amd64.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/20/5b/caca461e172d696b151e50a182c6111d192175571e34f483a477122c5d79/lxml-4.9.2-cp37-cp37m-win_amd64.whl           -o /installer/lxml-4.9.2-cp37-cp37m-win_amd64.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/8b/a0/52729ce4aa026f31b74cc877be1d11e4ddeaa361dc7aebec148171644b33/python-docx-0.8.11.tar.gz                     -o /installer/python-docx-0.8.11.tar.gz' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/01/06/4ab11bf70db5a60689fc521b636849c8593eb67a2c6bdf73a16c72d16a12/pbr-5.11.1-py2.py3-none-any.whl               -o /installer/pbr-5.11.1-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/6d/97/2e9c47ca1bbde6f09cb18feb887d5102e8eacd82fbc397c77b221f27a2ab/multi_key_dict-2.0.3.tar.gz                   -o /installer/multi_key_dict-2.0.3.tar.gz' -Wait
+      Start-Process 'c:\Program Files\Git\mingw64\bin\curl.exe' -ArgumentList 'https://files.pythonhosted.org/packages/85/05/dcde544581c549ab60fdb9e3908201194b1fec7ac0e349fcebe1f18ad054/python_jenkins-1.8.1-py3-none-any.whl         -o /installer/python_jenkins-1.8.1-py3-none-any.whl' -Wait
+
+      # CHROME INSTALL
+      Write-Output "run: install chrome"
+      Start-Process 'c:\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
+
+      # PYTHON INSTALL
+      Write-Output "run: install python"
+      Start-Process 'c:\installer\python-3.7.0-amd64.exe' -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1' -Wait
+
+      # PYTHON PLUGINs INSTALL
+      Write-Output "run: upgrade pip"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\pip-23.0.1-py3-none-any.whl' -Wait
+
+      Write-Output "run: install python plugin: pyelftools"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\pyelftools-0.27-py2.py3-none-any.whl' -Wait
+      
+      Write-Output "run: install python plugin: atlassia-python-api  "
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\certifi-2020.6.20-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\urllib3-1.25.9-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\idna-2.10-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\oauthlib-3.1.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\chardet-3.0.3-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\requests-2.24.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\requests_oauthlib-1.3.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\six-1.15.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\atlassian-python-api-1.16.0.tar.gz' -Wait
+
+      Write-Output "run: install python plugin: openpyxl"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\jdcal-1.4.1-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\et_xmlfile-1.0.1.tar.gz' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\defusedxml-0.6.0-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\openpyxl-3.0.5-py2.py3-none-any.whl' -Wait
+      
+      Write-Output "run: install python plugin: pywin32"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\pywin32-225-cp37-cp37m-win_amd64.whl' -Wait
+      
+      Write-Output "run: install python plugin: lxml"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\lxml-4.9.2-cp37-cp37m-win_amd64.whl' -Wait
+      
+      Write-Output "run: install python plugin: python-docx"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\python-docx-0.8.11.tar.gz' -Wait
+      
+      Write-Output "run: install python plugin: python-jenkins"
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\pbr-5.11.1-py2.py3-none-any.whl' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\multi_key_dict-2.0.3.tar.gz' -Wait
+      Start-Process 'c:\Program Files\Python37\python.exe' -ArgumentList '-m pip --disable-pip-version-check install c:\installer\python_jenkins-1.8.1-py3-none-any.whl' -Wait
+
+      Write-Output "run: complete"
+    POWERSHELL
+
+  end
+
+end

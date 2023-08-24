@@ -1,0 +1,98 @@
+-------------------
+## 
+
+docker pull atlassian/bamboo-server
+docker run -v bambooVolume:/var/atlassian/application-data/bamboo --name="bamboo" -d -p 8085:8085 -p 54663:54663 atlassian/bamboo-server
+
+docker pull postgres
+docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -v postgresVolume:/var/lib/postgresql/data -p 5432:5432 -d postgres
+
+
+docker exec -it some-postgres bash
+su - postgres
+# createuser -S -d -r -P -E dbadmin
+# createdb -O dbadmin bamboo
+
+postgres / mysecretpassword
+dbadmin / dbadmin
+
+
+# install vi / ifconfig / ping
+apt-get update
+apt-get install -y vim net-tools iputils-ping
+
+
+
+-------------------
+## CREATE DATABASE
+docker exec -it some-postgres bash
+su - postgres
+
+apt-get update
+# install vi / ifconfig / ping
+apt-get install -y vim net-tools iputils-ping
+
+postgres@873854ffee57:~$ psql -U postgres -p 5432
+
+postgres=# create role dbadmin with password 'dbadmin' valid until 'infinity';
+CREATE ROLE
+postgres=# \du
+ dbadmin    | Cannot login                                              +| {}
+            | Password valid until infinity                              | 
+ postgres   | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+
+postgres=# alter role dbadmin with login;
+ALTER ROLE
+postgres=# \du
+ dbadmin    | Password valid until infinity                              | {}
+ postgres   | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+
+postgres=# create database bamboo owner dbadmin;
+CREATE DATABASE
+postgres=# \l
+ bamboo    | dbadmin    | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ postgres  | postgres   | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ template0 | postgres   | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/postgres          +
+           |            |          |            |            |            |                 | postgres=CTc/postgres
+ template1 | postgres   | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/postgres          +
+           |            |          |            |            |            |                 | postgres=CTc/postgres
+
+postgres=# \q
+
+postgres@873854ffee57:~$ vim data/pg_hba.conf
+ADD LINE:
+host    all             all             all                     trust
+
+
+
+BAMBOO ADMIN USER:
+bamboo / bamboo
+
+
+========================
+JIRA SERVER ID: BBE4-V3VO-UU30-7Y0O
+BITBUCKET Server ID: B34K-ORP9-M4TE-07HW
+
+
+
+
+
+cd ~/Docker/Bamboo/
+docker build -t mybamboo .
+docker run -d --rm --name bamboo -v /home/noel/ApplicationData/Bamboo:/var/atlassian/application-data/bamboo -p 8085:8085 -p 54663:54663 mybamboo
+
+cd ~/Docker/Postgres/
+docker build -t mypostgres .
+docker run -d --rm --name postgres -v /home/noel/ApplicationData/Postgres:/var/lib/postgresql/data -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword mypostgres
+
+
+
+
+
+
+psql -U postgres -p 5432
+create role dbadmin with password 'dbadmin' valid until 'infinity';
+alter role dbadmin with login;
+create database bamboo owner dbadmin;
+
+echo 'host    all             all             all			trust' >> data/pg_hba.conf

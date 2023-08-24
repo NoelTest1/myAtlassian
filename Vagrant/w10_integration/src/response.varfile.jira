@@ -1,0 +1,13 @@
+# install4j response file for Jira Software 8.22.1
+app.install.service$Boolean=true
+app.jiraHome=C\:\\Atlassian\\Application Data\\Jira
+executeLauncherAction$Boolean=false
+existingInstallationDir=C\:\\Program Files\\Jira Software
+launch.application$Boolean=true
+portChoice=default
+sys.adminRights$Boolean=true
+sys.confirmedUpdateInstallationString=false
+sys.installationDir=C\:\\Program Files\\Atlassian\\Jira
+sys.languageId=en
+sys.programGroupAllUsers$Boolean=false
+sys.programGroupName=Jira
