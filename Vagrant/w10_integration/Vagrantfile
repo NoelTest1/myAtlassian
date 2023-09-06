@@ -77,7 +77,7 @@ Vagrant.configure("2") do |config|
 
     jira.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
       Write-Output "run: add entries to host file"
-      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo`n192.168.56.1`tdbserver" -Force
 
       Write-Output "run: install chrome"
       Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
@@ -85,6 +85,15 @@ Vagrant.configure("2") do |config|
       Write-Output "run: install java"
       Start-Process 'c:\Vagrant\installer\jre-8u261-windows-x64.exe' -ArgumentList 'INSTALLCFG=c:\Vagrant\java.install.cfg' -Wait
       [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
+
+      $myPath = 'C:\Atlassian'
+      Write-Output "run: create $myPath and open permissions"
+      New-Item -Path $myPath -ItemType Directory
+      $myAcl = Get-Acl $myPath
+      $AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("everyone","FullControl","ContainerInherit,Objectinherit","none","Allow")
+      $myAcl.AddAccessRule($AccessRule)
+      Set-Acl $myPath $myAcl
+      Get-Acl $myPath | fl
 
       Write-Output "run: install jira"
       Start-Process 'c:\Vagrant\installer\atlassian-jira-software-8.22.1-x64.exe' -ArgumentList '-q -varfile c:\Vagrant\response.varfile.jira' -Wait
@@ -118,7 +127,7 @@ Vagrant.configure("2") do |config|
 
     bitbucket.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
       Write-Output "run: add entries to host file"
-      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo`n192.168.56.1`tdbserver" -Force
 
       Write-Output "run: install chrome"
       Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
@@ -129,6 +138,15 @@ Vagrant.configure("2") do |config|
 
       Write-Output "run: install git"
       Start-Process 'c:\Vagrant\installer\Git-2.35.3-64-bit.exe' -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS' -Wait
+
+      $myPath = 'C:\Atlassian'
+      Write-Output "run: create $myPath and open permissions"
+      New-Item -Path $myPath -ItemType Directory
+      $myAcl = Get-Acl $myPath
+      $AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("everyone","FullControl","ContainerInherit,Objectinherit","none","Allow")
+      $myAcl.AddAccessRule($AccessRule)
+      Set-Acl $myPath $myAcl
+      Get-Acl $myPath | fl
 
       Write-Output "run: install bitbucket"
       Start-Process 'c:\Vagrant\installer\atlassian-bitbucket-7.21.0-x64.exe' -ArgumentList '-q -varfile c:\Vagrant\response.varfile.bitbucket' -Wait
@@ -162,7 +180,7 @@ Vagrant.configure("2") do |config|
 
     bamboo.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
       Write-Output "run: add entries to host file"
-      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo`n192.168.56.1`tdbserver" -Force
 
       Write-Output "run: install chrome"
       Start-Process 'c:\Vagrant\installer\GoogleChromeStandaloneEnterprise64.msi' -ArgumentList '/quiet /norestart' -Wait
@@ -171,19 +189,22 @@ Vagrant.configure("2") do |config|
       Start-Process 'c:\Vagrant\installer\jre-8u261-windows-x64.exe' -ArgumentList 'INSTALLCFG=c:\Vagrant\java.install.cfg' -Wait
       [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
 
+      # $myPath = 'C:\Atlassian'
+      # Write-Output "run: create $myPath and open permissions"
+      # New-Item -Path $myPath -ItemType Directory
+      # $myAcl = Get-Acl $myPath
+      # $AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("everyone","FullControl","ContainerInherit,Objectinherit","none","Allow")
+      # $myAcl.AddAccessRule($AccessRule)
+      # Set-Acl $myPath $myAcl
+      # Get-Acl $myPath | fl
+
       Write-Output "run: install bamboo"
       Start-Process 'c:\Vagrant\installer\atlassian-bamboo-8.2.1-windows-x64.exe' -ArgumentList '-q -varfile c:\Vagrant\response.varfile.bamboo' -Wait
 
       Write-Output "run: install and start bamboo service"
-      Start-Process 'c:\Atlassian\Bamboo\InstallAsService.bat' -Wait
+      Start-Process 'c:\Users\Public\Bamboo\InstallAsService.bat' -Wait
       Start-Service -Name "Atlassian Bamboo Bamboo"
 
-      Write-Output "run: install postgres"
-      Start-Process 'c:\Vagrant\installer\postgresql-13.6-2-windows-x64.exe' -ArgumentList '--mode unattended --prefix c:\postgres\13 --datadir c:\postgres\data --superpassword postgres --serverport 5432' -Wait
-      Copy-Item 'c:\Vagrant\pg_hba.conf' -Destination 'c:\postgres\data\pg_hba.conf' -Force 
-      Restart-Service -Name "postgresql-x64-13"
-      Start-Process 'c:\postgres\13\bin\psql.exe' -ArgumentList '-U postgres -f c:\Vagrant\create_db_all.sql' -Wait
-      
       Write-Output "run: disable firewalls"
       Start-Process 'netsh' -ArgumentList 'advfirewall set allprofiles state off' -Wait
 
@@ -214,13 +235,20 @@ Vagrant.configure("2") do |config|
 
     jenkins.vm.provision "shell", privileged: "true", inline: <<-'POWERSHELL'
       Write-Output "run: add entries to host file"
-      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo" -Force
+      Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n192.168.56.11`tjenkins`n192.168.56.12`tbitbucket`n192.168.56.13`tjira`n192.168.56.14`tconfluence`n192.168.56.15`tpostgres`n192.168.56.16`tbamboo`n192.168.56.1`tdbserver" -Force
 
-      Write-Output "run: install jenkins"
-      [Environment]::SetEnvironmentVariable("JENKINS_HOME", "c:\jenkins_home", "Machine")
-      New-Item -Path 'c:\jenkins_home' -ItemType Directory
-      Copy-Item 'c:\Vagrant\installer\jenkins.war' -Destination 'c:\jenkins_home'
-      Expand-Archive 'c:\Vagrant\plugins\jenkins_plugins.zip' -DestinationPath 'c:\jenkins_home'
+      $myPathHome = 'C:\jenkins_home'
+      Write-Output "run: create $myPathHome and open permissions"
+      New-Item -Path $myPathHome -ItemType Directory
+      $myAcl = Get-Acl $myPathHome
+      $AccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("everyone","FullControl","ContainerInherit,Objectinherit","none","Allow")
+      $myAcl.AddAccessRule($AccessRule)
+      Set-Acl $myPathHome $myAcl
+      Get-Acl $myPathHome | fl
+
+      [Environment]::SetEnvironmentVariable("JENKINS_HOME", $myPathHome, "Machine")
+      Expand-Archive 'c:\Vagrant\plugins\jenkins_plugins.zip' -DestinationPath $myPathHome
+      Copy-Item 'c:\Vagrant\installer\jenkins.war' -Destination $myPathHome
 
       Write-Output "run: install git"
       Start-Process 'c:\Vagrant\installer\Git-2.35.3-64-bit.exe' -ArgumentList '/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS' -Wait
@@ -232,10 +260,10 @@ Vagrant.configure("2") do |config|
       Start-Process 'netsh' -ArgumentList 'advfirewall set allprofiles state off' -Wait
 
       Write-Output "run: install java"
-      Start-Process 'c:\Vagrant\installer\OpenJDK11U-jdk_x64_windows_hotspot_11.0.14.1_1.msi' -ArgumentList '/quiet /forcerestart'
-      [Environment]::SetEnvironmentVariable("JRE_HOME", "c:\java\jre", "Machine")
+      Start-Process 'c:\Vagrant\installer\OpenJDK11U-jdk_x64_windows_hotspot_11.0.14.1_1.msi' -ArgumentList 'ADDLOCAL=FeatureMain,FeatureEnvironment,FeatureJarFileRunWith,FeatureJavaHome INSTALLDIR="C:\Java\" /quiet' -Wait
 
       Write-Output "run: complete"
     POWERSHELL
+
   end
 end

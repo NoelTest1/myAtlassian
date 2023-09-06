@@ -73,3 +73,16 @@ docker run --rm --add-host=bamboo:172.20.0.2 -e BAMBOO_SERVER=http://bamboo:8085
 failover:(tcp://172.20.0.2:54663?socket.verifyHostName=false&wireFormat.maxInactivityDuration=300000)?initialReconnectDelay=15000&maxReconnectAttempts=10
 
 failover:(ssl://172.20.0.2:54663?wireFormat.maxInactivityDuration=300000&amp;socket.verifyHostName=false)?initialReconnectDelay=15000&amp;maxReconnectAttempts=10
+
+
+
+### CONNECTING TO A RUNNING CONTAINER
+docker exec -it myatlassian-postgres-1 bash
+psql -U postgres
+\l
+create database jiradb owner dbadmin;
+create database confluencedb owner dbadmin;
+create database bitbucketdb owner dbadmin;
+create database bamboodb owner dbadmin;
+\l
+
